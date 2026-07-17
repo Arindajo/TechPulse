@@ -2,34 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    //  Parse the incoming form data from API
+    // Forcefully read the text body first to verify receipt
+    const textBody = await req.text();
+    console.log("RAW BODY RECEIVED:", textBody);
+
+    // Pwarse as FormData
     const formData = await req.formData();
-    
-    // API specific fields
-    const phoneNumber = formData.get('from');
-    const text = formData.get('text');
-    const sessionId = formData.get('sessionId');
+    console.log("FORM DATA PARSED:", Object.fromEntries(formData));
 
-    console.log(`Received SMS from ${phoneNumber}: ${text}`);
-
-  
-    const responseMessage = `Hello! We received your request: "${text}". Our system is currently setting up your event matches!`;
-
-    //  Return the response in XML format as required by API
-
-    const xmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-      <SMS>${responseMessage}</SMS>
-    </Response>`;
-
-    return new NextResponse(xmlResponse, {
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
       status: 200,
-      headers: {
-        'Content-Type': 'application/xml',
-      },
+      headers: { 'Content-Type': 'application/xml' },
     });
   } catch (error) {
-    console.error('Error handling SMS:', error);
+    console.error("CRITICAL ERROR IN ROUTE:", error);
     return new NextResponse('Error', { status: 500 });
   }
 }
