@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const AfricasTalking = require('africastalking')({
-  apiKey: process.env.AT_API_KEY!,
-  username: process.env.AT_USERNAME!
-});
-
+// Initialize Supabase (This is fine at the top)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function POST(req: NextRequest) {
+  // Move the AfricasTalking initialization INSIDE the function
+  const AfricasTalking = require('africastalking')({
+    apiKey: process.env.AT_API_KEY!,
+    username: process.env.AT_USERNAME!
+  });
+
   const formData = await req.formData();
+  
   const text = formData.get('text')?.toString() || "";
   const phoneNumber = formData.get('phoneNumber')?.toString() || "";
 
