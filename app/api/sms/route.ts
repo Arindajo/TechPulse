@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import events from '../../../events.json'; 
 
 export async function POST(req: NextRequest) {
   try {
-    // Forcefully read the text body first to verify receipt
-    const textBody = await req.text();
-    console.log("RAW BODY RECEIVED:", textBody);
-
-    // Pwarse as FormData
     const formData = await req.formData();
-    console.log("FORM DATA PARSED:", Object.fromEntries(formData));
-//response
-    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+    const text = (formData.get('text') as string).trim().toUpperCase();
+
+    //  Search Logic
+    const filteredEvents = events.filter(e => e.category === text);
+    
+    //  Build Dynamic Response
+    let reply = filteredEvents.length > 0 
+      ? filteredEvents.map(e => `${e.name} (ID: ${e.id})`).join(', ')
+      : "No events found. Try 'TECH' or 'AI'.";
+
+    const xmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+      <SMS>${reply}</SMS>
+    </Response>`;
+
+    return new NextResponse(xmlResponse, {
       status: 200,
       headers: { 'Content-Type': 'application/xml' },
     });
-    //error handling
   } catch (error) {
-    console.error("CRITICAL ERROR IN ROUTE:", error);
     return new NextResponse('Error', { status: 500 });
   }
 }
