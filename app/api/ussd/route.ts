@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       .from('events')
       .select('id, name')
       .eq('category', category);
+      console.log("Supabase Data:", events);
 
     if (error || !events || events.length === 0) {
       response = "END No events found.";
