@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     // Pwarse as FormData
     const formData = await req.formData();
     console.log("FORM DATA PARSED:", Object.fromEntries(formData));
-
+//response
     return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
       status: 200,
       headers: { 'Content-Type': 'application/xml' },
