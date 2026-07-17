@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
       status: 200,
       headers: { 'Content-Type': 'application/xml' },
     });
+    //error handling
   } catch (error) {
     console.error("CRITICAL ERROR IN ROUTE:", error);
     return new NextResponse('Error', { status: 500 });
