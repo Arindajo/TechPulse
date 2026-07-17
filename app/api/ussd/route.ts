@@ -28,25 +28,32 @@ export async function POST(req: NextRequest) {
 
   // MENU 2: Show Events from Database
   else if (text === "1" || text === "2") {
-    const category = text === "1" ? "TECH" : "AI";
-    
-    const { data: events, error } = await supabase
-      .from('events')
-      .select('id, name')
-      .eq('category', category);
-      console.log("Supabase Data:", events);
+  const category = text === "1" ? "TECH" : "AI";
+  
+  const { data: events, error } = await supabase
+    .from('events')
+    .select('id, name')
+    .ilike('category', category); // Case-insensitive
+if (error) {
+  console.error("Supabase Error Details:", error);
+}
+console.log("Supabase Data:", events);
 
-    if (error || !events || events.length === 0) {
-      response = "END No events found.";
-    } else {
-      response = "CON Select event:\n" + events.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
-    }
-  } 
+if (error || !events || events.length === 0) {
+  response = "END No events found.";
+}
+
+  if (error || !events || events.length === 0) {
+    response = "END No events found for " + category;
+  } else {
+    // This creates the list for the user
+    response = "CON Select event:\n" + events.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
+  }
+}
 
   // MENU 3: Register User
   else if (text.startsWith("1*") || text.startsWith("2*")) {
-    // This logic assumes user selected the first option for demo purposes
-    // In a production app, you would parse the specific selection index here
+    
     const eventId = 1; 
 
     const { error } = await supabase
