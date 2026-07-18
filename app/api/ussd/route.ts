@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
           await AfricasTalking.SMS.send({
             to: [phoneNumber],
             message: `Confirmed: You are registered for ${e.name}. Details: ${e.description}. Speakers: ${e.speakers}.`,
-            from: 'YOUR_SENDER_ID' // Replace with your approved Sender ID
+            from: '70889' 
           });
           response = "END Registration successful! Check your SMS for details.";
         } catch (smsError) {
