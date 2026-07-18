@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SERVICE_ROLE_KEY!);
+import { getSupabase } from '../lib/supabase/client';
 
 export async function POST(req: NextRequest) {
+  // Lazy-load Supabase inside the function
+  const supabase = getSupabase();
+
   const formData = await req.formData();
   const text = formData.get('text')?.toString().trim().toUpperCase() || "";
   const from = formData.get('from')?.toString() || "";
@@ -21,12 +22,22 @@ export async function POST(req: NextRequest) {
 
     if (conn) {
       // Reveal numbers to each other (The "Connection Broker")
-      const AfricasTalking = require('africastalking')({ apiKey: process.env.AT_API_KEY!, username: process.env.AT_USERNAME! });
-      await AfricasTalking.SMS.send({ to: [conn.sender_phone, conn.receiver_phone], message: "Connected! You can now contact each other." });
+      const AfricasTalking = require('africastalking')({ 
+        apiKey: process.env.AT_API_KEY!, 
+        username: process.env.AT_USERNAME! 
+      });
+      await AfricasTalking.SMS.send({ 
+        to: [conn.sender_phone, conn.receiver_phone], 
+        message: "Connected! You can now contact each other." 
+      });
     }
     
-    return new NextResponse('<Response><SMS>Connection confirmed!</SMS></Response>', { headers: {'Content-Type': 'application/xml'}});
+    return new NextResponse('<Response><SMS>Connection confirmed!</SMS></Response>', { 
+      headers: {'Content-Type': 'application/xml'}
+    });
   }
 
-  return new NextResponse('<Response><SMS>Invalid reply.</SMS></Response>', { headers: {'Content-Type': 'application/xml'}});
+  return new NextResponse('<Response><SMS>Invalid reply.</SMS></Response>', { 
+    headers: {'Content-Type': 'application/xml'}
+  });
 }

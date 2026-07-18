@@ -1,12 +1,12 @@
 "use client";
 import { useState } from 'react';
-import { supabase } from '../api/lib/supabase/client';
+import { getSupabase } from '../api/lib/supabase/client';
 
 const INTERESTS = ['AI', 'Cybersecurity', 'Data Science', 'Cloud', 'Web Dev', 'Blockchain'];
 
 export default function InterestPage() {
   const [selected, setSelected] = useState<string[]>([]);
-
+ const supabase = getSupabase();
   const toggleInterest = (i: string) => {
     setSelected(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
   };

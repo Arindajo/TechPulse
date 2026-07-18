@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from '../lib/supabase/client';
 import { GoogleGenAI } from '@google/genai';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-
 export async function POST(req: NextRequest) {
+  // Lazy-load Supabase
+  const supabase = getSupabase();
+  
+  // Initialize Africa's Talking
   const AfricasTalking = require('africastalking')({
     apiKey: process.env.AT_API_KEY!,
     username: process.env.AT_USERNAME!
   });
+  
+  // Initialize Google GenAI
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
   const formData = await req.formData();
   const text = formData.get('text')?.toString() || "";
@@ -44,12 +44,12 @@ export async function POST(req: NextRequest) {
       const { data: match } = await supabase.from('users').select('username').neq('phone_number', phoneNumber).limit(1).single();
 
       if (match) {
-       const aiResult = await ai.models.generateContent({
-  model: "gemini-2.0-flash", // Using the latest recommended stable model
-  contents: `Write a 15-word icebreaker for ${user?.username} to meet ${match.username} who likes ${user?.interests?.join(', ') || 'tech'}`
-});
+        const aiResult = await ai.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: `Write a 15-word icebreaker for ${user?.username} to meet ${match.username} who likes ${user?.interests?.join(', ') || 'tech'}`
+        });
 
-const icebreaker = aiResult.text;
+        const icebreaker = aiResult.text;
         
         await AfricasTalking.SMS.send({ to: [phoneNumber], message: `Match found: ${match.username}! Icebreaker: ${icebreaker}`, from: '70889' });
         response = "END Checked in! You have a match. Check your SMS.";
@@ -80,14 +80,14 @@ const icebreaker = aiResult.text;
     else if (parts.length === 1 && !["1", "2", "3", "4", "5"].includes(parts[0])) {
       const query = parts[0];
       const { data: events } = await supabase.from('events').select('id, name').or(`name.ilike.%${query}%,location.ilike.%${query}%`);
-      response = (events && events.length > 0) ? "CON Found:\n" + events.map((e, i) => `${i + 1}. ${e.name}`).join("\n") : "END No events found.";
+      response = (events && events.length > 0) ? "CON Found:\n" + events.map((e: any, i: number) => `${i + 1}. ${e.name}`).join("\n") : "END No events found.";
     }
 
     // 4. LIST EVENTS
     else if (parts.length === 1 && (parts[0] === "1" || parts[0] === "2")) {
       const category = parts[0] === "1" ? "TECH" : "AI";
       const { data: events } = await supabase.from('events').select('id, name').ilike('category', category);
-      response = (!events || events.length === 0) ? "END No events found." : "CON Select event:\n" + events.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
+      response = (!events || events.length === 0) ? "END No events found." : "CON Select event:\n" + events.map((e: any, i: number) => `${i + 1}. ${e.name}`).join("\n");
     }
 
     // 5. SHOW EVENT DETAILS

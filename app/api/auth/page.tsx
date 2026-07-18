@@ -1,12 +1,14 @@
 "use client";
 import { useState } from 'react';
-import { supabase } from '../lib/supabase/client';
+import { getSupabase } from '../lib/supabase/client';
 
 export default function AuthPage() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [loading, setLoading] = useState(false);
+  
+  const supabase = getSupabase();
 
   // 1. Register/Login Step
   const handleSendOtp = async () => {
