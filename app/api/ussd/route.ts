@@ -1,11 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '../lib/supabase/client';
 
+// Helper function to send SMS
+async function sendSMS(to: string, message: string) {
+  try {
+    const response = await fetch("https://api.africastalking.com/version1/messaging", {
+      method: "POST",
+      headers: { 
+        "apiKey": process.env.AT_API_KEY!, 
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+      },
+      body: new URLSearchParams({
+        username: process.env.AT_USERNAME!,
+        to: to,
+        message: message,
+        from: "70889"
+      })
+    });
+    const data = await response.json();
+    console.log("SMS API Response:", JSON.stringify(data));
+  } catch (error) {
+    console.error("SMS API Error:", error);
+  }
+}
+
 export async function POST(req: NextRequest) {
   const supabase = getSupabase();
   const formData = await req.formData();
   const text = formData.get('text')?.toString() || "";
   const phoneNumber = formData.get('phoneNumber')?.toString() || "";
+  
+  // Format phone number to international format (Example for Uganda +256)
+  // If the number starts with '0', replace with '+256'
+  const formattedPhone = phoneNumber.startsWith('0') ? phoneNumber.replace(/^0/, '+256') : phoneNumber;
+  
   const parts = text.split('*');
   let response = "";
 
@@ -15,7 +44,7 @@ export async function POST(req: NextRequest) {
       response = "CON Welcome to Radar\n1. View Events\n2. Update Interests\n3. Set Profile\n4. Check-in & Match";
     }
 
-    // 1. VIEW EVENTS (Combined Tech/AI)
+    // 1. VIEW EVENTS
     else if (parts[0] === "1") {
       if (parts.length === 1) response = "CON Select Category:\n1. Tech\n2. AI";
       else if (parts.length === 2) {
@@ -26,8 +55,13 @@ export async function POST(req: NextRequest) {
         const cat = parts[1] === "1" ? "TECH" : "AI";
         const idx = parseInt(parts[2]) - 1;
         const { data: events } = await supabase.from('events').select('*').ilike('category', cat);
+        
         if (events?.[idx]) {
           await supabase.from('registrations').insert([{ phone_number: phoneNumber, event_id: events[idx].id }]);
+          
+          // SEND SMS IMMEDIATELY
+          await sendSMS(formattedPhone, `Success! You have registered for ${events[idx].name}.`);
+          
           response = "END Registered for " + events[idx].name;
         } else response = "END Event not found.";
       }
@@ -70,7 +104,10 @@ export async function POST(req: NextRequest) {
     }
 
     else { response = "END Invalid selection."; }
-  } catch (err) { response = "END System busy."; }
+  } catch (err) { 
+    console.error("USSD Critical Error:", err);
+    response = "END System busy."; 
+  }
 
   return new NextResponse(response, { status: 200, headers: { 'Content-Type': 'text/plain' } });
 }
