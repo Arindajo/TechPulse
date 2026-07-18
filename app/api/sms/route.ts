@@ -57,11 +57,12 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json"
       },
-      body: new URLSearchParams({
-        username: process.env.AT_USERNAME!,
-        to: `${sender?.phone_number},${receiver?.phone_number}`,
-        message: profileMsg
-      })
+     body: new URLSearchParams({
+      username: process.env.AT_USERNAME!,
+      to: `${sender?.phone_number},${receiver?.phone_number}`,
+      message: profileMsg, 
+      from: "70889"        
+    })
     });
 
     const atResult = await atResponse.json();
