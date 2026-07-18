@@ -4,10 +4,8 @@ import { getSupabase } from '../lib/supabase/client';
 export async function POST(req: NextRequest) {
   const supabase = getSupabase();
   
-  // 1. Parse incoming Africa's Talking request
   const formData = await req.formData();
   const text = formData.get('text')?.toString().trim().toUpperCase() || "";
-  const from = formData.get('from')?.toString() || "";
 
   if (!text.startsWith("YES")) {
     return new NextResponse('<Response><SMS>Invalid format. Reply YES[ID].</SMS></Response>', { 
@@ -17,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   const matchId = text.replace("YES", "").trim();
 
-  // 2. Fetch match and user details
+  // Fetch match and join details
   const { data: match, error } = await supabase
     .from('matches')
     .select(`
@@ -35,12 +33,19 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 3. Update status in Database
+  // FIX: Explicitly handle the joined data as single objects for TypeScript
+  // We use Array.isArray to safely check if the data is wrapped in an array
+  const sender = Array.isArray(match.sender) ? match.sender[0] : match.sender;
+  const receiver = Array.isArray(match.receiver) ? match.receiver[0] : match.receiver;
+  const event = Array.isArray(match.event) ? match.event[0] : match.event;
+
+  // Update status in Database
   await supabase.from('matches').update({ status: 'accepted' }).eq('id', matchId);
 
-  // 4. Send follow-up profile SMS via Africa's Talking API
-  const profileMsg = `Connected! ${match.sender.username} meet ${match.receiver.username}. You are now linked for ${match.event?.name || 'the event'}.`;
+  // Use the extracted objects for your message
+  const profileMsg = `Connected! ${sender?.username || 'Sender'} meet ${receiver?.username || 'Receiver'}. You are now linked for ${event?.name || 'the event'}.`;
   
+  // Send follow-up profile SMS via Africa's Talking API
   await fetch("https://api.africastalking.com/version1/messaging", {
     method: "POST",
     headers: { 
@@ -50,12 +55,11 @@ export async function POST(req: NextRequest) {
     },
     body: new URLSearchParams({
       username: process.env.AT_USERNAME!,
-      to: `${match.sender.phone_number},${match.receiver.phone_number}`,
+      to: `${sender?.phone_number},${receiver?.phone_number}`,
       message: profileMsg
     })
   });
 
-  // 5. Respond to the original "YES" SMS
   return new NextResponse(`<Response><SMS>Success! You are connected. Check your phone for details.</SMS></Response>`, { 
     headers: {'Content-Type': 'application/xml'} 
   });
