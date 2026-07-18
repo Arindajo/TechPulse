@@ -4,44 +4,59 @@ import { getSupabase } from '../lib/supabase/client';
 export async function POST(req: NextRequest) {
   const supabase = getSupabase();
   
-  // Use formData() to parse Africa's Talking POST requests
+  // 1. Parse incoming Africa's Talking request
   const formData = await req.formData();
   const text = formData.get('text')?.toString().trim().toUpperCase() || "";
-  const phoneNumber = formData.get('from')?.toString() || "";
+  const from = formData.get('from')?.toString() || "";
 
-  if (text.startsWith("YES")) {
-    const matchId = text.replace("YES", "").trim();
-
-    // Fetch match with joined user and event details
-    const { data: match, error } = await supabase
-      .from('matches')
-      .select(`
-        id,
-        sender:users!matches_sender_phone_fkey(username),
-        receiver:users!matches_receiver_phone_fkey(username),
-        event:events(name)
-      `)
-      .eq('id', matchId)
-      .single();
-
-    if (match && !error) {
-      const senderName = match.sender?.username || "Sender";
-      const receiverName = match.receiver?.username || "Receiver";
-      const eventName = match.event?.name || "the event";
-
-      // Update status in DB
-      await supabase.from('matches').update({ status: 'accepted' }).eq('id', matchId);
-
-      const message = `Success! ${senderName}, you are connected with ${receiverName} for ${eventName}. Enjoy!`;
-
-      // Respond with XML for Africa's Talking
-      return new NextResponse(`<Response><SMS>${message}</SMS></Response>`, { 
-        headers: {'Content-Type': 'application/xml'} 
-      });
-    }
+  if (!text.startsWith("YES")) {
+    return new NextResponse('<Response><SMS>Invalid format. Reply YES[ID].</SMS></Response>', { 
+      headers: {'Content-Type': 'application/xml'} 
+    });
   }
 
-  return new NextResponse('<Response><SMS>Invalid code or match not found.</SMS></Response>', { 
+  const matchId = text.replace("YES", "").trim();
+
+  // 2. Fetch match and user details
+  const { data: match, error } = await supabase
+    .from('matches')
+    .select(`
+      id,
+      sender:users!matches_sender_phone_fkey(username, phone_number),
+      receiver:users!matches_receiver_phone_fkey(username, phone_number),
+      event:events(name)
+    `)
+    .eq('id', matchId)
+    .single();
+
+  if (error || !match) {
+    return new NextResponse('<Response><SMS>Match not found.</SMS></Response>', { 
+      headers: {'Content-Type': 'application/xml'} 
+    });
+  }
+
+  // 3. Update status in Database
+  await supabase.from('matches').update({ status: 'accepted' }).eq('id', matchId);
+
+  // 4. Send follow-up profile SMS via Africa's Talking API
+  const profileMsg = `Connected! ${match.sender.username} meet ${match.receiver.username}. You are now linked for ${match.event?.name || 'the event'}.`;
+  
+  await fetch("https://api.africastalking.com/version1/messaging", {
+    method: "POST",
+    headers: { 
+      "apiKey": process.env.AT_API_KEY!, 
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Accept": "application/json"
+    },
+    body: new URLSearchParams({
+      username: process.env.AT_USERNAME!,
+      to: `${match.sender.phone_number},${match.receiver.phone_number}`,
+      message: profileMsg
+    })
+  });
+
+  // 5. Respond to the original "YES" SMS
+  return new NextResponse(`<Response><SMS>Success! You are connected. Check your phone for details.</SMS></Response>`, { 
     headers: {'Content-Type': 'application/xml'} 
   });
 }
