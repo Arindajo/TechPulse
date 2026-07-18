@@ -1,29 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import events from '../../../events.json'; 
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SERVICE_ROLE_KEY!);
 
 export async function POST(req: NextRequest) {
-  try {
-    const formData = await req.formData();
-    const text = (formData.get('text') as string).trim().toUpperCase();
+  const formData = await req.formData();
+  const text = formData.get('text')?.toString().trim().toUpperCase() || "";
+  const from = formData.get('from')?.toString() || "";
 
-    //  Search Logic
-    const filteredEvents = events.filter(e => e.category === text);
+  // Logic: User replies "YES123" to accept connection request 123
+  if (text.startsWith("YES")) {
+    const connectionId = text.replace("YES", "");
     
-    //  Build Dynamic Response
-    let reply = filteredEvents.length > 0 
-      ? filteredEvents.map(e => `${e.name} (ID: ${e.id})`).join(', ')
-      : "No events found. Try 'TECH' or 'AI'.";
+    // Update connection to accepted
+    const { data: conn } = await supabase.from('connections')
+      .update({ status: 'accepted' })
+      .eq('id', connectionId)
+      .select('sender_phone, receiver_phone')
+      .single();
 
-    const xmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-      <SMS>${reply}</SMS>
-    </Response>`;
-
-    return new NextResponse(xmlResponse, {
-      status: 200,
-      headers: { 'Content-Type': 'application/xml' },
-    });
-  } catch (error) {
-    return new NextResponse('Error', { status: 500 });
+    if (conn) {
+      // Reveal numbers to each other (The "Connection Broker")
+      const AfricasTalking = require('africastalking')({ apiKey: process.env.AT_API_KEY!, username: process.env.AT_USERNAME! });
+      await AfricasTalking.SMS.send({ to: [conn.sender_phone, conn.receiver_phone], message: "Connected! You can now contact each other." });
+    }
+    
+    return new NextResponse('<Response><SMS>Connection confirmed!</SMS></Response>', { headers: {'Content-Type': 'application/xml'}});
   }
+
+  return new NextResponse('<Response><SMS>Invalid reply.</SMS></Response>', { headers: {'Content-Type': 'application/xml'}});
 }
