@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     console.error("Failed to send SMS:", err);
   }
 
-  return new NextResponse(`<Response><SMS>Success! You are connected.</SMS></Response>`, { 
+  return new NextResponse(`<Response><SMS>Success! You are connected!.</SMS></Response>`, { 
     headers: {'Content-Type': 'application/xml'} 
   });
 }
