@@ -18,26 +18,25 @@ export async function POST(req: NextRequest) {
   const parts = text.split('*');
   let response = "";
 
-  // 1. MAIN MENU
+  //  MAIN MENU
   if (text === "") {
-    response = "CON Welcome to TechPulse\n1. View Tech Events\n2. View AI Events";
+    response = "CON Welcome to TechPulse\n1. View Tech Events\n2. View AI Events\n3. Update Interests";
   }
 
-  // 2. LIST EVENTS (e.g., "1" or "2")
-  else if (parts.length === 1) {
+  //  LIST EVENTS (Category Selection)
+  else if (parts.length === 1 && (parts[0] === "1" || parts[0] === "2")) {
     const category = parts[0] === "1" ? "TECH" : "AI";
     const { data: events } = await supabase.from('events').select('id, name').ilike('category', category);
 
     if (!events || events.length === 0) {
       response = "END No events found for " + category;
     } else {
-      // Store IDs in a way we can reference later (index + 1)
       response = "CON Select event:\n" + events.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
     }
   }
 
-  // 3. SHOW EVENT DETAILS (e.g., "1*1")
-  else if (parts.length === 2) {
+  //  SHOW EVENT DETAILS
+  else if (parts.length === 2 && (parts[0] === "1" || parts[0] === "2")) {
     const category = parts[0] === "1" ? "TECH" : "AI";
     const selectedIdx = parseInt(parts[1]) - 1;
     const { data: events } = await supabase.from('events').select('*').ilike('category', category);
@@ -50,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 4. REGISTER & SEND SMS (e.g., "1*1*1")
+  //  REGISTER FOR EVENT
   else if (parts.length === 3 && parts[2] === "1") {
     const category = parts[0] === "1" ? "TECH" : "AI";
     const selectedIdx = parseInt(parts[1]) - 1;
@@ -59,22 +58,36 @@ export async function POST(req: NextRequest) {
 
     if (e) {
       const { error } = await supabase.from('registrations').insert([{ phone_number: phoneNumber, event_id: e.id }]);
-      
       if (!error) {
-        try {
-          await AfricasTalking.SMS.send({
-            to: [phoneNumber],
-            message: `Confirmed: You are registered for ${e.name}. Details: ${e.description}. Speakers: ${e.speakers}.`,
-            from: '70889' 
-          });
-          response = "END Registration successful! Check your SMS for details.";
-        } catch (smsError) {
-          console.error("SMS Error:", smsError);
-          response = "END Registered, but SMS failed to send.";
-        }
+        await AfricasTalking.SMS.send({ to: [phoneNumber], message: `Confirmed: You are registered for ${e.name}.`, from: '70889' });
+        response = "END Registration successful!";
       } else {
         response = "END Registration failed.";
       }
+    }
+  }
+
+  //  INTERESTS MENU 
+  else if (parts[0] === "3") {
+    if (parts.length === 1) {
+      response = "CON Select interest to add:\n1. AI\n2. Cybersecurity\n3. Data Analysis\n0. Save & Exit";
+    } else if (parts.length === 2 && parts[1] === "0") {
+      response = "END Interests updated!";
+    } else if (parts.length === 2 && ["1", "2", "3"].includes(parts[1])) {
+      const interestMap: { [key: string]: string } = { "1": "AI", "2": "Cybersecurity", "3": "Data Analysis" };
+      const selectedInterest = interestMap[parts[1]];
+
+      // Upsert user and add interest
+      const { data: existingUser } = await supabase.from('users').select('interests').eq('phone_number', phoneNumber).single();
+      const currentInterests = existingUser?.interests || [];
+      
+      if (!currentInterests.includes(selectedInterest)) {
+        await supabase.from('users').upsert({ 
+          phone_number: phoneNumber, 
+          interests: [...currentInterests, selectedInterest] 
+        });
+      }
+      response = "CON Added " + selectedInterest + "! Select more or 0 to Save.";
     }
   }
 
