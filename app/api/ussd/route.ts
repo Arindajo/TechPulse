@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '../lib/supabase/client';
 
-// Helper function to send SMS
+// Robust Helper function to send SMS
 async function sendSMS(to: string, message: string) {
+  // Ensure the phone number is in +256 format
+  const sanitizedTo = to.startsWith('0') ? to.replace(/^0/, '+256') : (to.startsWith('+') ? to : `+256${to}`);
+
   try {
     const response = await fetch("https://api.africastalking.com/version1/messaging", {
       method: "POST",
@@ -13,15 +16,23 @@ async function sendSMS(to: string, message: string) {
       },
       body: new URLSearchParams({
         username: process.env.AT_USERNAME!,
-        to: to,
+        to: sanitizedTo,
         message: message,
-        from: "70889"
+        // from: "70889" // REMOVE THIS if you don't have a registered Sender ID
       })
     });
+
+    // Check if the request was successful
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`SMS API Failed (${response.status}):`, errorText);
+      return;
+    }
+
     const data = await response.json();
-    console.log("SMS API Response:", JSON.stringify(data));
+    console.log("SMS API Success:", JSON.stringify(data));
   } catch (error) {
-    console.error("SMS API Error:", error);
+    console.error("SMS API Connection Error:", error);
   }
 }
 
@@ -30,10 +41,6 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const text = formData.get('text')?.toString() || "";
   const phoneNumber = formData.get('phoneNumber')?.toString() || "";
-  
-  // Format phone number to international format (Example for Uganda +256)
-  // If the number starts with '0', replace with '+256'
-  const formattedPhone = phoneNumber.startsWith('0') ? phoneNumber.replace(/^0/, '+256') : phoneNumber;
   
   const parts = text.split('*');
   let response = "";
@@ -59,8 +66,8 @@ export async function POST(req: NextRequest) {
         if (events?.[idx]) {
           await supabase.from('registrations').insert([{ phone_number: phoneNumber, event_id: events[idx].id }]);
           
-          // SEND SMS IMMEDIATELY
-          await sendSMS(formattedPhone, `Success! You have registered for ${events[idx].name}.`);
+          // Send SMS
+          await sendSMS(phoneNumber, `Success! You have registered for ${events[idx].name}.`);
           
           response = "END Registered for " + events[idx].name;
         } else response = "END Event not found.";

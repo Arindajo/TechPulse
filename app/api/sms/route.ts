@@ -38,6 +38,10 @@ export async function POST(req: NextRequest) {
   const receiver = Array.isArray(match.receiver) ? match.receiver[0] : match.receiver;
   const event = Array.isArray(match.event) ? match.event[0] : match.event;
 
+  // Ensure phone numbers are in international format (+256...)
+  const sanitize = (num: string) => num.startsWith('0') ? num.replace(/^0/, '+256') : (num.startsWith('+') ? num : `+256${num}`);
+  const recipientList = [sanitize(sender.phone_number), sanitize(receiver.phone_number)].join(',');
+
   await supabase.from('matches').update({ status: 'accepted' }).eq('id', matchId);
 
   const profileMsg = `Connected! ${sender?.username || 'Sender'} meet ${receiver?.username || 'Receiver'}. You are now linked for ${event?.name || 'the event'}.`;
@@ -52,19 +56,24 @@ export async function POST(req: NextRequest) {
       },
       body: new URLSearchParams({
         username: process.env.AT_USERNAME!,
-        to: `${sender?.phone_number},${receiver?.phone_number}`,
+        to: recipientList,
         message: profileMsg,
-        from: "70889" // Ensure this is a registered ID
+        from: "70889" // Ensure this is a registered shortcode/ID
       })
     });
 
-    const atResult = await atResponse.json();
-    console.log("AT API Response:", JSON.stringify(atResult));
+    if (!atResponse.ok) {
+      const errorText = await atResponse.text();
+      console.error("AT API Error Response:", errorText);
+    } else {
+      const atResult = await atResponse.json();
+      console.log("AT API Success:", JSON.stringify(atResult));
+    }
   } catch (err) {
     console.error("Failed to send SMS:", err);
   }
 
-  return new NextResponse(`<Response><SMS>Success! You are connected!.</SMS></Response>`, { 
+  return new NextResponse(`<Response><SMS>Success! You are connected!</SMS></Response>`, { 
     headers: {'Content-Type': 'application/xml'} 
   });
 }
