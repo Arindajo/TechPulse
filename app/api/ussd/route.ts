@@ -1,74 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase (This is fine at the top)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function POST(req: NextRequest) {
-  // Move the AfricasTalking initialization INSIDE the function
   const AfricasTalking = require('africastalking')({
     apiKey: process.env.AT_API_KEY!,
     username: process.env.AT_USERNAME!
   });
 
   const formData = await req.formData();
-  
   const text = formData.get('text')?.toString() || "";
   const phoneNumber = formData.get('phoneNumber')?.toString() || "";
-
+  const parts = text.split('*');
   let response = "";
 
-  // MENU 1: Main Categories
+  // 1. MAIN MENU
   if (text === "") {
     response = "CON Welcome to TechPulse\n1. View Tech Events\n2. View AI Events";
-  } 
-
-  // MENU 2: Show Events from Database
-  else if (text === "1" || text === "2") {
-  const category = text === "1" ? "TECH" : "AI";
-  
-  const { data: events, error } = await supabase
-    .from('events')
-    .select('id, name')
-    .ilike('category', category); // Case-insensitive
-if (error) {
-  console.error("Supabase Error Details:", error);
-}
-console.log("Supabase Data:", events);
-
-if (error || !events || events.length === 0) {
-  response = "END No events found.";
-}
-
-  if (error || !events || events.length === 0) {
-    response = "END No events found for " + category;
-  } else {
-    // This creates the list for the user
-    response = "CON Select event:\n" + events.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
   }
-}
 
-  // MENU 3: Register User
-  else if (text.startsWith("1*") || text.startsWith("2*")) {
-    
-    const eventId = 1; 
+  // 2. LIST EVENTS (e.g., "1" or "2")
+  else if (parts.length === 1) {
+    const category = parts[0] === "1" ? "TECH" : "AI";
+    const { data: events } = await supabase.from('events').select('id, name').ilike('category', category);
 
-    const { error } = await supabase
-      .from('registrations')
-      .insert([{ phone_number: phoneNumber, event_id: eventId }]);
-
-    if (error) {
-      response = "END Registration failed.";
+    if (!events || events.length === 0) {
+      response = "END No events found for " + category;
     } else {
-      await AfricasTalking.SMS.send({
-        to: [phoneNumber],
-        message: "You are registered for the event!",
-        from: '1517'
-      });
-      response = "END Registration successful!";
+      // Store IDs in a way we can reference later (index + 1)
+      response = "CON Select event:\n" + events.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
+    }
+  }
+
+  // 3. SHOW EVENT DETAILS (e.g., "1*1")
+  else if (parts.length === 2) {
+    const category = parts[0] === "1" ? "TECH" : "AI";
+    const selectedIdx = parseInt(parts[1]) - 1;
+    const { data: events } = await supabase.from('events').select('*').ilike('category', category);
+
+    if (events && events[selectedIdx]) {
+      const e = events[selectedIdx];
+      response = `CON ${e.name}\n${e.description}\nTime: ${e.time}\nLoc: ${e.location}\n1. Register\n0. Back`;
+    } else {
+      response = "END Event not found.";
+    }
+  }
+
+  // 4. REGISTER & SEND SMS (e.g., "1*1*1")
+  else if (parts.length === 3 && parts[2] === "1") {
+    const category = parts[0] === "1" ? "TECH" : "AI";
+    const selectedIdx = parseInt(parts[1]) - 1;
+    const { data: events } = await supabase.from('events').select('*').ilike('category', category);
+    const e = events?.[selectedIdx];
+
+    if (e) {
+      const { error } = await supabase.from('registrations').insert([{ phone_number: phoneNumber, event_id: e.id }]);
+      
+      if (!error) {
+        try {
+          await AfricasTalking.SMS.send({
+            to: [phoneNumber],
+            message: `Confirmed: You are registered for ${e.name}. Details: ${e.description}. Speakers: ${e.speakers}.`,
+            from: 'YOUR_SENDER_ID' // Replace with your approved Sender ID
+          });
+          response = "END Registration successful! Check your SMS for details.";
+        } catch (smsError) {
+          console.error("SMS Error:", smsError);
+          response = "END Registered, but SMS failed to send.";
+        }
+      } else {
+        response = "END Registration failed.";
+      }
     }
   }
 
