@@ -36,46 +36,47 @@ export default function AuthPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FEF5EB] flex flex-col items-center justify-center p-6">
-      {/* Visual Header */}
-      <div className="w-full max-w-sm text-center mb-8">
-        <div className="w-20 h-20 bg-[#c36b05] rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-          <span className="text-white text-3xl font-black">TP</span>
+    <main className="app-shell-centered">
+      <div className="app-container-narrow stack-md">
+      <div className="text-center">
+        <div className="w-20 h-20 bg-[#9dff7e] rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-[#9dff7e]/20">
+          <span className="text-[#0d2c1a] text-3xl font-black">TP</span>
         </div>
-        <h1 className="text-3xl font-black text-[#c36b05]">TechPulse</h1>
-        <p className="text-slate-600 font-medium">Your gateway to innovation in Uganda</p>
+        <h1 className="section-title text-3xl">TechPulse</h1>
+        <p className="section-subtitle font-medium">Your gateway to innovation in Uganda</p>
       </div>
 
-      <div className="w-full max-w-sm bg-white p-8 rounded-[2rem] shadow-xl border border-orange-100">
+      <div className="glass-panel panel-pad-lg stack-md">
         {step === 'phone' ? (
-          <div className="space-y-4 animate-in fade-in duration-500">
-            <h2 className="text-xl font-bold text-slate-800">Enter your phone</h2>
+          <div className="stack-sm">
+            <h2 className="text-xl font-bold text-[#effff6]">Enter your phone</h2>
             <input 
               type="tel" 
               placeholder="07XXXXXXXX" 
-              className="w-full p-4 rounded-2xl border-2 border-orange-100 focus:border-[#c36b05] outline-none transition"
+              className="tp-input"
               onChange={(e) => setPhone(e.target.value)}
             />
-            <button onClick={handleSendOtp} disabled={loading} className="w-full bg-[#c36b05] text-white py-4 rounded-2xl font-bold hover:bg-[#a35904] transition">
+            <button onClick={handleSendOtp} disabled={loading} className="tp-btn-primary w-full">
               {loading ? "Sending..." : "Get OTP Code"}
             </button>
           </div>
         ) : (
-          <div className="space-y-4 animate-in fade-in duration-500">
-            <h2 className="text-xl font-bold text-slate-800">Check your SMS</h2>
-            <p className="text-sm text-slate-500">We sent a 6-digit code to {phone}</p>
+          <div className="stack-sm">
+            <h2 className="text-xl font-bold text-[#effff6]">Check your SMS</h2>
+            <p className="text-sm tp-muted">We sent a 6-digit code to {phone}</p>
             <input 
               type="text" 
               maxLength={6}
               placeholder="000000" 
-              className="w-full p-4 text-center text-3xl tracking-[0.5em] rounded-2xl border-2 border-orange-100 focus:border-[#c36b05] outline-none transition"
+              className="tp-input text-center text-3xl tracking-[0.5em]"
               onChange={(e) => setOtp(e.target.value)}
             />
-            <button onClick={handleVerifyOtp} disabled={loading} className="w-full bg-[#c36b05] text-white py-4 rounded-2xl font-bold hover:bg-[#a35904] transition">
+            <button onClick={handleVerifyOtp} disabled={loading} className="tp-btn-primary w-full">
               {loading ? "Verifying..." : "Verify & Join"}
             </button>
           </div>
         )}
+      </div>
       </div>
     </main>
   );

@@ -6,7 +6,7 @@ const INTERESTS = ['AI', 'Cybersecurity', 'Data Science', 'Cloud', 'Web Dev', 'B
 
 export default function InterestPage() {
   const [selected, setSelected] = useState<string[]>([]);
- const supabase = getSupabase();
+  const supabase = getSupabase();
   const toggleInterest = (i: string) => {
     setSelected(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
   };
@@ -20,21 +20,31 @@ export default function InterestPage() {
   };
 
   return (
-    <main className="min-h-screen p-6 flex flex-col items-center">
-      <h2 className="text-2xl font-bold text-[#c36b05] mb-2">Tailor Your Feed</h2>
-      <p className="text-slate-500 mb-8 text-center">Select topics you love to get alerts.</p>
-      
-      <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+    <main className="app-shell-centered">
+      <section className="app-container-narrow glass-panel panel-pad-lg stack-md">
+        <h2 className="section-title text-center">Tailor your feed</h2>
+        <p className="section-subtitle text-center">Select topics you love to get alerts.</p>
+
+        <div className="choice-grid w-full">
         {INTERESTS.map(i => (
-          <button key={i} onClick={() => toggleInterest(i)} className={`p-4 rounded-2xl border-2 font-semibold transition ${selected.includes(i) ? 'border-[#c36b05] bg-[#c36b05] text-white' : 'bg-white border-slate-200'}`}>
+          <button
+            key={i}
+            onClick={() => toggleInterest(i)}
+            className={`choice-pill ${
+              selected.includes(i)
+                ? 'choice-pill-active'
+                : ''
+            }`}
+          >
             {i}
           </button>
         ))}
-      </div>
-      
-      <button onClick={saveInterests} className="mt-8 w-full max-w-sm bg-[#c36b05] text-white py-4 rounded-xl font-bold">
-        Complete Profile
-      </button>
+        </div>
+
+        <button onClick={saveInterests} className="mt-6 w-full tp-btn-primary">
+          Complete profile
+        </button>
+      </section>
     </main>
   );
 }
