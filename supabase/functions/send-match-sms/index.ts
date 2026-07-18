@@ -22,29 +22,36 @@ serve(async (req) => {
     return new Response("Missing record data", { status: 400 });
   }
 
-  // 2. Initialize Supabase
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!, 
-    Deno.env.get('SERVICE_ROLE_KEY')!
-  );
+  // 2. Initialize Supabase using the RENAME secret names
+  const supabaseUrl = Deno.env.get('MY_PROJECT_URL');
+  const supabaseKey = Deno.env.get('MY_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !supabaseKey) {
+    return new Response("Server configuration error", { status: 500 });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   // 3. Fetch sender and receiver data
   const { data: sender } = await supabase
     .from('users')
     .select('username, phone_number')
     .eq('phone_number', record.sender_phone)
-    .single() as { data: User | null };
+    .single();
 
   const { data: receiver } = await supabase
     .from('users')
     .select('username, interests')
     .eq('phone_number', record.receiver_phone)
-    .single() as { data: User | null };
+    .single();
 
-  if (!sender || !receiver) return new Response("User not found", { status: 404 });
+  if (!sender || !receiver) {
+    return new Response("User not found", { status: 404 });
+  }
 
   // 4. Call Gemini
-  const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${Deno.env.get('GEMINI_API_KEY')}`, {
+  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
