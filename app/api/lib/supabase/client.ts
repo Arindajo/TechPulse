@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Simple factory function: always returns a valid client
 export const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
